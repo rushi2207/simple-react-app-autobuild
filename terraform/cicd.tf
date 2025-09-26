@@ -33,9 +33,9 @@ resource "aws_s3_bucket_lifecycle_configuration" "cicd_lifecycle" {
 
 # CodeBuild project
 resource "aws_codebuild_project" "react_build" {
-  name         = "${var.aws_prefix}-react-build"
-  description  = "Builds React app and uploads artifact"
-  service_role = aws_iam_role.codebuild_role.arn
+  name          = "${var.aws_prefix}-react-build"
+  description   = "Builds React app and uploads artifact"
+  service_role  = aws_iam_role.codebuild_role.arn
   build_timeout = 60
 
   artifacts {
@@ -43,9 +43,10 @@ resource "aws_codebuild_project" "react_build" {
   }
 
   environment {
-    compute_type    = "BUILD_GENERAL1_SMALL"
-    image           = "aws/codebuild/standard:7.0"
-    type            = "LINUX_CONTAINER"
+    compute_type = "BUILD_GENERAL1_SMALL"
+    image        = "aws/codebuild/standard:7.0"
+    type         = "LINUX_CONTAINER"
+
     environment_variable {
       name  = "S3_BUCKET"
       value = aws_s3_bucket.cicd_bucket.bucket
@@ -67,9 +68,10 @@ resource "aws_codebuild_project" "react_build" {
   }
 
   logs_config {
-    cloudwatch {
-      group_name = "/aws/codebuild/${var.aws_prefix}-react-build"
+    cloudwatch_logs {
+      group_name  = "/aws/codebuild/${var.aws_prefix}-react-build"
       stream_name = "build-log"
+      status      = "ENABLED"
     }
   }
 }
