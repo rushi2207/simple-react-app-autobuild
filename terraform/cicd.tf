@@ -4,15 +4,27 @@ resource "random_id" "bucket_id" {
 
 resource "aws_s3_bucket" "cicd_bucket" {
   bucket = "${var.aws_prefix}-react-cicd-${random_id.bucket_id.hex}"
+}
+
+resource "aws_s3_bucket_acl" "cicd_bucket_acl" {
+  bucket = aws_s3_bucket.cicd_bucket.id
   acl    = "private"
+}
 
-  versioning {
-    enabled = true
+resource "aws_s3_bucket_versioning" "cicd_versioning" {
+  bucket = aws_s3_bucket.cicd_bucket.id
+  versioning_configuration {
+    status = "Enabled"
   }
+}
 
-  lifecycle_rule {
-    id      = "cleanup"
-    enabled = true
+resource "aws_s3_bucket_lifecycle_configuration" "cicd_lifecycle" {
+  bucket = aws_s3_bucket.cicd_bucket.id
+
+  rule {
+    id     = "cleanup"
+    status = "Enabled"
+
     expiration {
       days = 90
     }
