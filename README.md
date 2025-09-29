@@ -86,4 +86,3 @@ sudo systemctl restart nginx
 
 👉 This README + testing workflow is **enough for any new team member** to clone the repo and deploy the entire project from scratch.  
 
-Do you want me to also include a **diagram (architecture flow)** for the README (GitHub → CodePipeline → CodeBuild → S3 → EC2)? That would make it visually clear for new members.
