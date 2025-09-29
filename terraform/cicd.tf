@@ -2,15 +2,23 @@ resource "random_id" "bucket_id" {
   byte_length = 4
 }
 
+# ---------------------------
+# S3 bucket for artifacts
+# ---------------------------
 resource "aws_s3_bucket" "cicd_bucket" {
   bucket = "${var.aws_prefix}-react-cicd-${random_id.bucket_id.hex}"
 }
 
-resource "aws_s3_bucket_acl" "cicd_bucket_acl" {
+# Enforce bucket ownership (no ACLs needed)
+resource "aws_s3_bucket_ownership_controls" "cicd_bucket_ownership" {
   bucket = aws_s3_bucket.cicd_bucket.id
-  acl    = "private"
+
+  rule {
+    object_ownership = "BucketOwnerEnforced"
+  }
 }
 
+# Enable versioning
 resource "aws_s3_bucket_versioning" "cicd_versioning" {
   bucket = aws_s3_bucket.cicd_bucket.id
   versioning_configuration {
@@ -18,6 +26,7 @@ resource "aws_s3_bucket_versioning" "cicd_versioning" {
   }
 }
 
+# Add lifecycle policy
 resource "aws_s3_bucket_lifecycle_configuration" "cicd_lifecycle" {
   bucket = aws_s3_bucket.cicd_bucket.id
 
@@ -25,13 +34,19 @@ resource "aws_s3_bucket_lifecycle_configuration" "cicd_lifecycle" {
     id     = "cleanup"
     status = "Enabled"
 
+    filter {
+      prefix = "" # apply to all objects
+    }
+
     expiration {
       days = 90
     }
   }
 }
 
+# ---------------------------
 # CodeBuild project
+# ---------------------------
 resource "aws_codebuild_project" "react_build" {
   name          = "${var.aws_prefix}-react-build"
   description   = "Builds React app and uploads artifact"
@@ -76,7 +91,9 @@ resource "aws_codebuild_project" "react_build" {
   }
 }
 
+# ---------------------------
 # CodePipeline
+# ---------------------------
 resource "aws_codepipeline" "react_pipeline" {
   name     = "${var.aws_prefix}-react-pipeline"
   role_arn = aws_iam_role.codepipeline_role.arn
@@ -88,11 +105,12 @@ resource "aws_codepipeline" "react_pipeline" {
 
   stage {
     name = "Source"
+
     action {
       name             = "GitHub_Source"
       category         = "Source"
       owner            = "ThirdParty"
-      provider         = "GitHub"
+      provider         = "GitHub" # ⚠️ v1 provider, works but deprecated
       version          = "1"
       output_artifacts = ["source_output"]
 
@@ -107,6 +125,7 @@ resource "aws_codepipeline" "react_pipeline" {
 
   stage {
     name = "Build"
+
     action {
       name            = "CodeBuild"
       category        = "Build"
@@ -114,6 +133,7 @@ resource "aws_codepipeline" "react_pipeline" {
       provider        = "CodeBuild"
       version         = "1"
       input_artifacts = ["source_output"]
+
       configuration = {
         ProjectName = aws_codebuild_project.react_build.name
       }
