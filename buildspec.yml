@@ -17,7 +17,7 @@ phases:
     commands:
       - echo "Building React app..."
       - npm run build
-  post_build:
+    post_build:
     commands:
       - echo "Packaging build and uploading to S3..."
       - zip -r build.zip build
@@ -25,13 +25,14 @@ phases:
       - ARTIFACT_KEY=$(aws s3 ls s3://$S3_BUCKET/builds/ --recursive | sort | tail -n1 | awk '{print $4}')
       - ARTIFACT_S3_URI="s3://$S3_BUCKET/$ARTIFACT_KEY"
       - echo "Latest artifact: $ARTIFACT_S3_URI"
-      - |
-        aws ssm send-command \
-          --document-name "AWS-RunShellScript" \
-          --comment "Deploy React app" \
-          --targets "Key=tag:$TARGET_TAG_KEY,Values=$TARGET_TAG_VALUE" \
-          --parameters commands=["mkdir -p /tmp/deploy","aws s3 cp $ARTIFACT_S3_URI /tmp/deploy/build.zip","unzip -o /tmp/deploy/build.zip -d /tmp/deploy/","rm -rf /var/www/html/*","cp -r /tmp/deploy/build/* /var/www/html/","chown -R www-data:www-data /var/www/html","chmod -R 755 /var/www/html","systemctl restart nginx || true"] \
-          --timeout-seconds 600
+      - >
+        aws ssm send-command
+        --document-name "AWS-RunShellScript"
+        --comment "Deploy React app"
+        --targets "Key=tag:$TARGET_TAG_KEY,Values=$TARGET_TAG_VALUE"
+        --parameters '{"commands":["mkdir -p /tmp/deploy","aws s3 cp '"$ARTIFACT_S3_URI"' /tmp/deploy/build.zip","unzip -o /tmp/deploy/build.zip -d /tmp/deploy/","rm -rf /var/www/html/*","cp -r /tmp/deploy/build/* /var/www/html/","chown -R www-data:www-data /var/www/html","chmod -R 755 /var/www/html","systemctl restart nginx || true"]}'
+        --timeout-seconds 600
+
 artifacts:
   files:
     - '**/*'
